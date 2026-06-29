@@ -28,16 +28,23 @@ const projects = [
     category: "فروشگاهی",
     tag: "website",
     description: "وب سایت فروشگاهی پیشرفته مدریت ادرس ها کاربران و محصولات ",
-    image: "./sablo.png",
-    link: "#",
+    image: "./shopparsa.png",
+    link: "https://shop-frontend-six-beta.vercel.app",
   },    {
-    title: "وب سایت فروشگاهی ",
-    category: "فروشگاهی",
+    title: "اپلیکیشن مدیریت مالی سابلو ",
+    category: "حسابداری شخصی",
     tag: "website",
-    description: "وب سایت فروشگاهی پیشرفته مدریت ادرس ها کاربران و محصولات ",
+    description: "وب سایت و اپلیکیشن مدیریت مالی شخصی",
     image: "./sablo.png",
-    link: "https",
-  },
+    link: "https://sablo.ir",
+  }, {
+    title: "وب اپلیکیشن مدیریت کافه ها",
+    category: "مدیریتی",
+    tag: "website",
+    description: "وب سایت و اپلیکیشن مدیریت کافه ",
+    image: "./cafeto.png",
+    link: "https://cafeto-client.vercel.app",
+  }
 ];
 export default function Projects() {
   return (
