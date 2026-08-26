@@ -1,6 +1,4 @@
 import Image from "next/image";
-
-
 export default function Hero() {
     return (
         <section id="home" aria-label="معرفی">
@@ -21,10 +19,8 @@ export default function Hero() {
                     />
                 </div>
             </div>
-
             {/* متن */}
             <div className="hero-text">
-
                 {/* تگ کوچک بالای اسم */}
                 <span
                     style={{
@@ -42,7 +38,6 @@ export default function Hero() {
                 >
                     FullStack Developer
                 </span>
-
                 {/* اسم کامل — یه h1 */}
                 <h1
                     className="h1"
@@ -54,7 +49,6 @@ export default function Hero() {
                         پارسا اسدزاده
                     </span>
                 </h1>
-
                 {/* توضیح */}
                 <p
                     className="hero-desc"
@@ -64,7 +58,6 @@ export default function Hero() {
                     توسعه‌دهنده فرانت‌اند با تخصص در React و Next.js —
                     رابط‌های کاربری می‌سازم که هم سریع‌اند، هم زیبا، هم حرفه‌ای.
                 </p>
-
                 {/* بج‌ها */}
                 <div
                     style={{
@@ -88,21 +81,55 @@ export default function Hero() {
                         ایران — ارومیه
                     </span>
                 </div>
-
-                {/* دکمه */}
-                <a
-                    href="parsaasadzadeh.pdf"
-                    className="dl-btn"
+                {/* دکمه‌ها */}
+                <div
+                    style={{
+                        display: 'flex',
+                        gap: '12px',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}
                     data-aos="fade-up"
                     data-aos-delay="500"
-                    download="resume.pdf"
                 >
-                    <i className="fas fa-download" aria-hidden="true" />
-                    {' '}دانلود رزومه
-                </a>
+                    {/* دکمه دانلود رزومه */}
+                    <a
+                        href="parsaasadzadeh.pdf"
+                        className="dl-btn"
+                        download="resume.pdf"
+                    >
+                        <i className="fas fa-download" aria-hidden="true" />
+                        {' '}دانلود رزومه
+                    </a>
+                    {/* دکمه آموزش */}
+                    <a
+                        href="#courses"
+                        className="dl-btn"
+                        style={{
+                            background: 'transparent',
+                            border: '1.5px solid var(--ac)',
+                            color: 'var(--ac)',
+                        }}
+                    >
+                        <i className="fas fa-graduation-cap" aria-hidden="true" />
+                        {' '}آموزش
+                    </a>
+                    {/* دکمه سفارش طراحی سایت */}
+                    <a
+                        href="#contact"
+                        className="dl-btn"
+                        style={{
+                            background: 'transparent',
+                            border: '1.5px solid var(--text2)',
+                            color: 'var(--text1)',
+                        }}
+                    >
+                        <i className="fas fa-palette" aria-hidden="true" />
+                        {' '}سفارش طراحی سایت
+                    </a>
+                </div>
             </div>
         </section>
     );
-
-    
 }
