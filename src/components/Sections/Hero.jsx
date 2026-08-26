@@ -104,7 +104,7 @@ export default function Hero() {
                     </a>
                     {/* دکمه آموزش */}
                     <a
-                        href="#courses"
+                        href="/courses"
                         className="dl-btn"
                         style={{
                             background: 'transparent',
@@ -117,7 +117,7 @@ export default function Hero() {
                     </a>
                     {/* دکمه سفارش طراحی سایت */}
                     <a
-                        href="#contact"
+                        href="/order"
                         className="dl-btn"
                         style={{
                             background: 'transparent',
