@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const BASE = "https://parsaback.ir/api";
+const BASE = "https://parsa-order-backend.vercel.app/api";
 
 /* ── status config ── */
 const STATUS = {
