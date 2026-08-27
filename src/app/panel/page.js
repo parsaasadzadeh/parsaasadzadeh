@@ -24,16 +24,6 @@ function Badge({ status }) {
   );
 }
 
-function Field({ label, value }) {
-  if (!value) return null;
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 14, color: "var(--text0)", lineHeight: 1.7 }}>{value}</div>
-    </div>
-  );
-}
-
 /* ════════════════════════════════════════════════════════ */
 export default function PanelPage() {
   const [token,      setToken]      = useState(null);
@@ -118,6 +108,9 @@ export default function PanelPage() {
     finally { setActionLoad(false); }
   }
 
+  // -------------------------------------------------------------
+  // تغییر اصلی اینجاست: دریافت PDF به صورت Blob و دانلود مستقیم
+  // -------------------------------------------------------------
   async function approve() {
     setActionLoad(true);
     try {
@@ -125,12 +118,33 @@ export default function PanelPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      flash("قرارداد صادر شد ✓", true);
-      refreshSelected({ ...selected, status: "approved", contractText: data.contract });
-    } catch (e) { flash(e.message, false); }
-    finally { setActionLoad(false); }
+      
+      if (!res.ok) {
+        // در صورت خطا، بک‌اند همچنان JSON برمی‌گرداند
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "خطا در صدور قرارداد");
+      }
+
+      // اگر موفق بود، فایل PDF را به عنوان Blob دریافت می‌کنیم
+      const blob = await res.blob();
+      
+      // ایجاد یک لینک موقت برای دانلود فایل PDF
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `contract_${selected._id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      flash("قرارداد صادر و دانلود شد ✓", true);
+      refreshSelected({ ...selected, status: "approved" });
+    } catch (e) { 
+      flash(e.message, false); 
+    } finally { 
+      setActionLoad(false); 
+    }
   }
 
   function refreshSelected(updated) {
@@ -420,7 +434,7 @@ export default function PanelPage() {
                 borderRadius: 12, padding: "16px 20px", marginBottom: 20,
               }}>
                 <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>توضیحات مشتری</div>
-                <p style={{ fontSize: 14, lineHeight: 2, color: "var(--text0)" }}>{selected.desc}</p>
+                <p style={{ fontSize: 14, lineHeight: 2, color: "var(--text0)" }}>{selected.desc || "توضیحاتی ثبت نشده است."}</p>
               </div>
 
               {/* refUrl */}
@@ -438,7 +452,7 @@ export default function PanelPage() {
               )}
 
               {/* ── action box ── */}
-              {selected.status !== "approved" && (
+              {selected.status !== "approved" ? (
                 <div style={{
                   background: "var(--bg1)", border: "1.5px solid var(--border)",
                   borderRadius: 16, padding: "24px", marginBottom: 28,
@@ -505,8 +519,8 @@ export default function PanelPage() {
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     }}
                   >
-                    <i className="fas fa-file-contract" />
-                    تایید نهایی و صدور قرارداد
+                    {actionLoad ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-file-pdf" />}
+                    تایید نهایی و دانلود قرارداد PDF
                   </button>
 
                   {!selected.finalPrice && (
@@ -515,39 +529,27 @@ export default function PanelPage() {
                     </p>
                   )}
                 </div>
-              )}
-
-              {/* contract */}
-              {selected.contractText && (
+              ) : (
+                /* ── State: Approved ── */
                 <div style={{
                   background: "var(--bg1)", border: "1.5px solid #10b981",
                   borderRadius: 16, padding: "24px", marginBottom: 28,
+                  textAlign: "center"
                 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <div style={{ fontWeight: 700, color: "#10b981", fontSize: 15 }}>
-                      <i className="fas fa-file-contract" style={{ marginLeft: 8 }} />
-                      متن قرارداد
-                    </div>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(selected.contractText)}
-                      style={{
-                        background: "var(--bg2)", border: "1px solid var(--border)",
-                        borderRadius: 8, padding: "6px 14px",
-                        color: "var(--text1)", cursor: "pointer",
-                        fontFamily: "Vazirmatn, sans-serif", fontSize: 12,
-                      }}
-                    >
-                      <i className="fas fa-copy" style={{ marginLeft: 5 }} />
-                      کپی
-                    </button>
+                  <div style={{ width: 48, height: 48, background: "rgba(16,185,129,.12)", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#10b981", fontSize: 20 }}>
+                    <i className="fas fa-check" />
                   </div>
-                  <pre style={{
-                    background: "var(--bg2)", borderRadius: 10, padding: "16px",
-                    fontSize: 13, lineHeight: 2.2, color: "var(--text0)",
-                    whiteSpace: "pre-wrap", direction: "rtl", fontFamily: "Vazirmatn, sans-serif",
-                  }}>
-                    {selected.contractText}
-                  </pre>
+                  <div style={{ fontWeight: 700, color: "#10b981", fontSize: 16, marginBottom: 8 }}>
+                    قرارداد صادر شده است
+                  </div>
+                  <p style={{ color: "var(--text2)", fontSize: 13, marginBottom: 20 }}>
+                    برای این سفارش فایل PDF قرارداد جنریت شده است.
+                  </p>
+                  
+                  {/* دکمه دانلود مجدد در صورت نیاز (بک‌اند باید از GET برای دریافت فایل پشتیبانی کند یا اینکه همین متد رو فراخوانی کنید) */}
+                  <div style={{ fontSize: 13, color: "var(--text1)" }}>
+                     قیمت نهایی: <strong>{Number(selected.finalPrice).toLocaleString("fa-IR")} تومان</strong>
+                  </div>
                 </div>
               )}
 
