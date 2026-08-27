@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 const BASE = "https://parsa-order-backend.vercel.app/api";
 
-/* ── status config ── */
+/* ── وضعیت‌ها ── */
 const STATUS = {
   pending:  { label: "در انتظار",  color: "#f59e0b", bg: "rgba(245,158,11,.12)"  },
   reviewed: { label: "بررسی شد",   color: "#3b82f6", bg: "rgba(59,130,246,.12)"  },
@@ -11,7 +11,6 @@ const STATUS = {
   rejected: { label: "رد شد",      color: "#ef4444", bg: "rgba(239,68,68,.12)"   },
 };
 
-/* ── tiny helpers ── */
 function Badge({ status }) {
   const s = STATUS[status] || STATUS.pending;
   return (
@@ -24,7 +23,6 @@ function Badge({ status }) {
   );
 }
 
-/* ════════════════════════════════════════════════════════ */
 export default function PanelPage() {
   const [token,      setToken]      = useState(null);
   const [password,   setPassword]   = useState("");
@@ -33,29 +31,29 @@ export default function PanelPage() {
 
   const [orders,     setOrders]     = useState([]);
   const [loading,    setLoading]    = useState(false);
-  const [selected,   setSelected]   = useState(null);   // order object
+  const [selected,   setSelected]   = useState(null);
   const [filter,     setFilter]     = useState("all");
 
   const [priceInput, setPriceInput] = useState("");
   const [actionLoad, setActionLoad] = useState(false);
-  const [msg,        setMsg]        = useState(null);   // { text, ok }
+  const [msg,        setMsg]        = useState(null);
 
-  /* persist token */
+  /* بازیابی توکن از حافظه مرورگر */
   useEffect(() => {
     const t = localStorage.getItem("adminToken");
     if (t) setToken(t);
   }, []);
 
-  /* fetch orders whenever token changes */
+  /* دریافت لیست سفارش‌ها به محض فعال شدن توکن */
   useEffect(() => {
     if (token) fetchOrders();
   }, [token]);
 
-  /* ── auth ── */
+  /* ── ورود و خروج ── */
   async function login() {
     setLoginLoad(true); setLoginErr("");
     try {
-      const res  = await fetch(`${BASE}/admin/login`, {
+      const res = await fetch(`${BASE}/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -76,59 +74,58 @@ export default function PanelPage() {
     setToken(null); setOrders([]); setSelected(null);
   }
 
-  /* ── data ── */
+  /* ── دریافت اطلاعات سفارش‌ها ── */
   async function fetchOrders() {
     setLoading(true);
     try {
-      const res  = await fetch(`${BASE}/admin/orders`, {
+      const res = await fetch(`${BASE}/admin/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401 || res.status === 403) { logout(); return; }
       const data = await res.json();
       setOrders(data);
-    } catch { /* ignore */ }
+      if (selected) {
+        const updatedSelected = data.find(item => item._id === selected._id);
+        if (updatedSelected) setSelected(updatedSelected);
+      }
+    } catch { /* نادیده گرفتن خطا */ }
     finally { setLoading(false); }
   }
 
-  /* ── actions ── */
+  /* ── ثبت قیمت ── */
   async function savePrice() {
     if (!priceInput) return;
     setActionLoad(true);
     try {
-      const res  = await fetch(`${BASE}/admin/orders/${selected._id}/price`, {
+      const res = await fetch(`${BASE}/admin/orders/${selected._id}/price`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ finalPrice: Number(priceInput) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      flash("قیمت ثبت شد ✓", true);
+      flash("قیمت با موفقیت ثبت شد ✓", true);
       refreshSelected(data.order);
     } catch (e) { flash(e.message, false); }
     finally { setActionLoad(false); }
   }
 
-  // -------------------------------------------------------------
-  // تغییر اصلی اینجاست: دریافت PDF به صورت Blob و دانلود مستقیم
-  // -------------------------------------------------------------
-  async function approve() {
+  /* ── دانلود و ذخیره فایل PDF ── */
+  async function fetchAndDownloadPdf(endpoint, method = "POST") {
     setActionLoad(true);
     try {
-      const res  = await fetch(`${BASE}/admin/orders/${selected._id}/approve`, {
-        method: "POST",
+      const res = await fetch(`${BASE}/admin/orders/${selected._id}/${endpoint}`, {
+        method,
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (!res.ok) {
-        // در صورت خطا، بک‌اند همچنان JSON برمی‌گرداند
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "خطا در صدور قرارداد");
+        throw new Error(errData.message || "خطا در دریافت فایل PDF");
       }
 
-      // اگر موفق بود، فایل PDF را به عنوان Blob دریافت می‌کنیم
+      // دریافت فایل و دانلود اتوماتیک در مرورگر
       const blob = await res.blob();
-      
-      // ایجاد یک لینک موقت برای دانلود فایل PDF
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -138,13 +135,23 @@ export default function PanelPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      flash("قرارداد صادر و دانلود شد ✓", true);
+      flash("فایل قرارداد با موفقیت دانلود شد ✓", true);
       refreshSelected({ ...selected, status: "approved" });
-    } catch (e) { 
-      flash(e.message, false); 
-    } finally { 
-      setActionLoad(false); 
+    } catch (e) {
+      flash(e.message, false);
+    } finally {
+      setActionLoad(false);
     }
+  }
+
+  /* تایید برای بار اول */
+  function approve() {
+    fetchAndDownloadPdf("approve", "POST");
+  }
+
+  /* دانلود مجدد */
+  function reDownload() {
+    fetchAndDownloadPdf("download-contract", "GET");
   }
 
   function refreshSelected(updated) {
@@ -157,7 +164,7 @@ export default function PanelPage() {
     setTimeout(() => setMsg(null), 3500);
   }
 
-  /* ════════ LOGIN SCREEN ════════ */
+  /* ════════ صفحه ورود ════════ */
   if (!token) return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center",
@@ -179,7 +186,7 @@ export default function PanelPage() {
             <i className="fas fa-lock" />
           </div>
           <h1 style={{ fontSize: "1.4rem", fontWeight: 900, marginBottom: 4 }}>پنل ادمین</h1>
-          <p style={{ color: "var(--text2)", fontSize: 13 }}>فقط برای پارسا</p>
+          <p style={{ color: "var(--text2)", fontSize: 13 }}>مدیریت سفارش‌ها</p>
         </div>
 
         <input
@@ -209,15 +216,15 @@ export default function PanelPage() {
           fontFamily: "Vazirmatn, sans-serif", fontWeight: 700, fontSize: 15,
           cursor: loginLoad ? "not-allowed" : "pointer", opacity: loginLoad ? .7 : 1,
         }}>
-          {loginLoad ? <><i className="fas fa-spinner fa-spin" /> ورود...</> : "ورود به پنل"}
+          {loginLoad ? <><i className="fas fa-spinner fa-spin" /> در حال ورود...</> : "ورود به پنل"}
         </button>
       </div>
     </div>
   );
 
-  /* ════════ PANEL ════════ */
+  /* ════════ صفحه اصلی پنل ════════ */
   const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
-  const counts   = Object.fromEntries(
+  const counts = Object.fromEntries(
     ["all","pending","reviewed","approved","rejected"].map(k => [
       k, k === "all" ? orders.length : orders.filter(o => o.status === k).length
     ])
@@ -229,7 +236,7 @@ export default function PanelPage() {
       fontFamily: "Vazirmatn, sans-serif", direction: "rtl",
     }}>
 
-      {/* ── topbar ── */}
+      {/* هدر بالای پنل */}
       <div style={{
         background: "var(--bg1)", borderBottom: "1px solid var(--border)",
         padding: "16px 24px", display: "flex",
@@ -246,7 +253,7 @@ export default function PanelPage() {
             <i className="fas fa-layer-group" />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 15 }}>داشبورد پارسا</div>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>داشبورد مدیریت</div>
             <div style={{ fontSize: 11, color: "var(--text2)" }}>{orders.length} سفارش کل</div>
           </div>
         </div>
@@ -258,7 +265,7 @@ export default function PanelPage() {
             color: "var(--text1)", cursor: "pointer",
             fontFamily: "Vazirmatn, sans-serif", fontSize: 13,
           }}>
-            <i className="fas fa-rotate-right" />
+            <i className="fas fa-rotate-right" /> بروزرسانی
           </button>
           <button onClick={logout} style={{
             background: "transparent", border: "1px solid var(--border)",
@@ -271,7 +278,7 @@ export default function PanelPage() {
         </div>
       </div>
 
-      {/* ── flash message ── */}
+      {/* اعلان‌های شناور */}
       {msg && (
         <div style={{
           position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)",
@@ -286,14 +293,14 @@ export default function PanelPage() {
 
       <div style={{ display: "flex", height: "calc(100vh - 69px)" }}>
 
-        {/* ── sidebar — order list ── */}
+        {/* نوار کناری - لیست سفارش‌ها */}
         <div style={{
           width: 320, borderLeft: "1px solid var(--border)",
           background: "var(--bg1)", display: "flex", flexDirection: "column",
           flexShrink: 0, overflowY: "auto",
         }}>
 
-          {/* filter tabs */}
+          {/* تب‌های فیلتر */}
           <div style={{ padding: "16px 16px 0", display: "flex", flexWrap: "wrap", gap: 6 }}>
             {[
               ["all","همه"], ["pending","در انتظار"],
@@ -321,7 +328,7 @@ export default function PanelPage() {
             ))}
           </div>
 
-          {/* list */}
+          {/* آیتم‌های لیست */}
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 12px" }}>
             {loading && (
               <div style={{ textAlign: "center", color: "var(--text2)", padding: 32, fontSize: 13 }}>
@@ -361,7 +368,7 @@ export default function PanelPage() {
           </div>
         </div>
 
-        {/* ── detail panel ── */}
+        {/* پنل جزئیات سفارش */}
         <div style={{ flex: 1, overflowY: "auto", padding: "32px 32px" }}>
           {!selected ? (
             <div style={{
@@ -370,12 +377,12 @@ export default function PanelPage() {
               color: "var(--text2)", gap: 16,
             }}>
               <i className="fas fa-inbox" style={{ fontSize: 48, opacity: .3 }} />
-              <p style={{ fontSize: 15 }}>یه سفارش از لیست انتخاب کن</p>
+              <p style={{ fontSize: 15 }}>یک سفارش را از لیست انتخاب کنید</p>
             </div>
           ) : (
             <div style={{ maxWidth: 680 }}>
 
-              {/* header */}
+              {/* عنوان */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
                 <div>
                   <h2 style={{ fontSize: "1.5rem", fontWeight: 900, marginBottom: 6 }}>{selected.name}</h2>
@@ -388,7 +395,7 @@ export default function PanelPage() {
                 </div>
               </div>
 
-              {/* info grid */}
+              {/* شبکه اطلاعات اولیه */}
               <div style={{
                 display: "grid", gridTemplateColumns: "1fr 1fr",
                 gap: 20, marginBottom: 28,
@@ -404,12 +411,12 @@ export default function PanelPage() {
                     borderRadius: 12, padding: "16px",
                   }}>
                     <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6 }}>{l}</div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{v}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{v || "-"}</div>
                   </div>
                 ))}
               </div>
 
-              {/* features */}
+              {/* امکانات درخواستی */}
               {selected.features?.length > 0 && (
                 <div style={{
                   background: "var(--bg1)", border: "1px solid var(--border)",
@@ -428,7 +435,7 @@ export default function PanelPage() {
                 </div>
               )}
 
-              {/* desc */}
+              {/* توضیحات */}
               <div style={{
                 background: "var(--bg1)", border: "1px solid var(--border)",
                 borderRadius: 12, padding: "16px 20px", marginBottom: 20,
@@ -437,7 +444,7 @@ export default function PanelPage() {
                 <p style={{ fontSize: 14, lineHeight: 2, color: "var(--text0)" }}>{selected.desc || "توضیحاتی ثبت نشده است."}</p>
               </div>
 
-              {/* refUrl */}
+              {/* نمونه سایت */}
               {selected.refUrl && (
                 <div style={{
                   background: "var(--bg1)", border: "1px solid var(--border)",
@@ -451,15 +458,16 @@ export default function PanelPage() {
                 </div>
               )}
 
-              {/* ── action box ── */}
+              {/* ── بخش عملیات ── */}
               {selected.status !== "approved" ? (
+                /* حالت ۱: هنوز تایید نشده */
                 <div style={{
                   background: "var(--bg1)", border: "1.5px solid var(--border)",
                   borderRadius: 16, padding: "24px", marginBottom: 28,
                 }}>
                   <div style={{ fontWeight: 700, marginBottom: 20, fontSize: 15 }}>
                     <i className="fas fa-pen-to-square" style={{ color: "var(--ac)", marginLeft: 8 }} />
-                    تعیین قیمت و تایید
+                    تعیین قیمت و صدور قرارداد
                   </div>
 
                   <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "flex-end" }}>
@@ -471,7 +479,7 @@ export default function PanelPage() {
                         type="number"
                         value={priceInput}
                         onChange={e => setPriceInput(e.target.value)}
-                        placeholder="مثلاً: 12000000"
+                        placeholder="مثلاً: 14000000"
                         style={{
                           width: "100%", background: "var(--bg2)",
                           border: "1.5px solid var(--border)", borderRadius: 10,
@@ -499,7 +507,7 @@ export default function PanelPage() {
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       marginBottom: 16,
                     }}>
-                      <span style={{ fontSize: 13, color: "var(--text1)" }}>قیمت فعلی</span>
+                      <span style={{ fontSize: 13, color: "var(--text1)" }}>قیمت ثبت‌شده</span>
                       <span style={{ fontWeight: 900, color: "#10b981", fontSize: 16 }}>
                         {Number(selected.finalPrice).toLocaleString("fa-IR")} تومان
                       </span>
@@ -522,15 +530,9 @@ export default function PanelPage() {
                     {actionLoad ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-file-pdf" />}
                     تایید نهایی و دانلود قرارداد PDF
                   </button>
-
-                  {!selected.finalPrice && (
-                    <p style={{ fontSize: 12, color: "var(--text2)", textAlign: "center", marginTop: 8 }}>
-                      ابتدا قیمت رو ثبت کن
-                    </p>
-                  )}
                 </div>
               ) : (
-                /* ── State: Approved ── */
+                /* حالت ۲: تایید شده (قرارداد صادر شده + امکان دانلود مجدد) */
                 <div style={{
                   background: "var(--bg1)", border: "1.5px solid #10b981",
                   borderRadius: 16, padding: "24px", marginBottom: 28,
@@ -539,17 +541,27 @@ export default function PanelPage() {
                   <div style={{ width: 48, height: 48, background: "rgba(16,185,129,.12)", borderRadius: "50%", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", color: "#10b981", fontSize: 20 }}>
                     <i className="fas fa-check" />
                   </div>
-                  <div style={{ fontWeight: 700, color: "#10b981", fontSize: 16, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, color: "#10b981", fontSize: 16, marginBottom: 6 }}>
                     قرارداد صادر شده است
                   </div>
-                  <p style={{ color: "var(--text2)", fontSize: 13, marginBottom: 20 }}>
-                    برای این سفارش فایل PDF قرارداد جنریت شده است.
+                  <p style={{ color: "var(--text2)", fontSize: 13, marginBottom: 16 }}>
+                    قیمت نهایی: <strong style={{ color: "var(--text0)" }}>{Number(selected.finalPrice).toLocaleString("fa-IR")} تومان</strong>
                   </p>
-                  
-                  {/* دکمه دانلود مجدد در صورت نیاز (بک‌اند باید از GET برای دریافت فایل پشتیبانی کند یا اینکه همین متد رو فراخوانی کنید) */}
-                  <div style={{ fontSize: 13, color: "var(--text1)" }}>
-                     قیمت نهایی: <strong>{Number(selected.finalPrice).toLocaleString("fa-IR")} تومان</strong>
-                  </div>
+
+                  <button
+                    onClick={reDownload}
+                    disabled={actionLoad}
+                    style={{
+                      width: "100%", background: "#3b82f6", color: "#fff",
+                      border: "none", borderRadius: 10, padding: "12px",
+                      fontFamily: "Vazirmatn, sans-serif", fontWeight: 700, fontSize: 14,
+                      cursor: "pointer", opacity: actionLoad ? .7 : 1,
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    }}
+                  >
+                    {actionLoad ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-download" />}
+                    دانلود مجدد قرارداد PDF
+                  </button>
                 </div>
               )}
 
