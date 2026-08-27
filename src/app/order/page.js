@@ -134,7 +134,7 @@ async function handleSubmit() {
       contact,
     };
 
-    const res = await fetch("https://parsaback.ir/api/orders/new", {
+    const res = await fetch("https://parsa-order-backend.vercel.app/api/orders/new", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
