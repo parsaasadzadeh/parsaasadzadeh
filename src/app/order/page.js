@@ -120,13 +120,37 @@ export default function OrderPage() {
     !!(name.trim() && contact.trim()),
   ][step];
 
-  async function handleSubmit() {
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1400)); // replace with real fetch
-    setLoading(false);
-    setSubmitted(true);
-  }
+async function handleSubmit() {
+  setLoading(true);
+  try {
+    const payload = {
+      siteType,
+      features,
+      budget:   BUDGETS.find(b => b.id === budget)?.label,
+      deadline: DEADLINES.find(d => d.id === deadline)?.label,
+      desc,
+      refUrl,
+      name,
+      contact,
+    };
 
+    const res = await fetch("https://parsaback.ir/api/orders/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.message || "خطا در ثبت سفارش");
+
+    setSubmitted(true);
+  } catch (err) {
+    alert("❌ " + err.message);
+  } finally {
+    setLoading(false);
+  }
+}
   /* ── submitted ── */
   if (submitted) return (
     <div style={{
