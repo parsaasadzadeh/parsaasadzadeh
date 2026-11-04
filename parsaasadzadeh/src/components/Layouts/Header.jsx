@@ -7,8 +7,8 @@ export default function Header() {
             <nav data-aos="fade-down">
                 <div className="top-nav">
                     <div style={{display :"flex", gap:"12px", alignitems:"center"}}>
-                        <button className="lang-btn" aria-label="Switch to English">Englیبلسیلسلish</button>
-                        <button className="lang-btn active" aria-label="زبان فاسیبسیبسیبرسی">فارسبسیبسیبسیبی</button>
+                        <button className="lang-btn" aria-label="Switch to English">English</button>
+                        <button className="lang-btn active" aria-label="زبان فارسی">فارسی</button>
                     </div>
                     <div className="logo" aria-label="لوگو پارسا">ParsaAsadzadeh</div>
                     <ThemeToggle />
