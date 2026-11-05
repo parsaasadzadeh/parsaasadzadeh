@@ -7,7 +7,6 @@
 //  همچنین متن داخل PDF قابل انتخاب، کپی و جستجو می‌ماند.
 // ═══════════════════════════════════════════════════════════════
 const fs = require("fs");
-const puppeteer = require("puppeteer-core");
 const { VAZIR_REG_B64, VAZIR_BOLD_B64 } = require("./fonts.js");
 
 // ── ابزارهای کمکی ───────────────────────────────────────────────
@@ -282,12 +281,12 @@ function findBrowser() {
 let browserPromise = null;
 function getBrowser() {
   if (!browserPromise) {
-    browserPromise = puppeteer
-      .launch({
+    browserPromise = import("puppeteer-core")
+      .then((m) => (m.default || m).launch({
         headless: true,
         executablePath: findBrowser(),
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-      })
+      }))
       .then((b) => {
         b.on("disconnected", () => { browserPromise = null; });
         return b;
