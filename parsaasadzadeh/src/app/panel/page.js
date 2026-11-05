@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const BASE = "http://localhost:5000/api";
+const BASE = "https://parsa-order-backend.vercel.app";
 
 const STATUS = {
   pending:  { label: "در انتظار",  color: "#f59e0b", bg: "rgba(245,158,11,.12)"  },
