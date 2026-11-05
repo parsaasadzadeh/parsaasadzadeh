@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 
-const BASE = "http://localhost:5000/api";
+const BASE = "https://parsa-order-backend.vercel.app";
 
 // صفحه‌ی امضای مجری (پارسا) — با لینک یک‌بارمصرفی که از پنل ادمین ساخته می‌شه.
 // این امضا همیشگیه: یک بار ثبت می‌شه و روی همه‌ی قراردادهای بعدی خودکار قرار می‌گیره.
